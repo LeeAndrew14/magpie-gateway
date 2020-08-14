@@ -14,6 +14,7 @@ if ( count( $magpie_payload ) !== 0 ) {
     $capture            = $magpie_payload['auto_charge'];
     $order_id           = $magpie_payload['order_id'];
     $stmt_desc          = $magpie_payload['stmt_desc'];
+    $token_only         = $magpie_payload['token_only'];
     $public_key         = $magpie_payload['public_key'];
     $private_key        = $magpie_payload['private_key'];
     $description        = $magpie_payload['description'];
@@ -113,7 +114,7 @@ if ( count( $magpie_payload ) !== 0 ) {
 
         $magpie_backend->save_magpie_token( $order_id, $card_token );
 
-        if ( $card_token->id ) {
+        if ( $card_token->id && !$token_only ) {
             $charge_payload = array(
                 'amount'                => $amount,
                 'source'                => $card_token->id,
@@ -137,6 +138,16 @@ if ( count( $magpie_payload ) !== 0 ) {
             $data = array(
                 'order_id'          => $order_id,
                 'message'           => $charge_data->id,
+                'new_order_status'  => 'processing',
+            );
+
+            $magpie_backend->update_order_status( $data );
+
+            die();
+        } else {
+            $data = array(
+                'order_id'          => $order_id,
+                'message'           => 'Token Only',
                 'new_order_status'  => 'processing',
             );
 

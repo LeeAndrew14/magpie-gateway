@@ -35,6 +35,7 @@ class WC_Magpie_Gateway extends WC_Payment_Gateway {
         $this->private_key          = $this->test_mode ? $this->get_option( 'test_private_key' ) : $this->get_option( 'private_key' );
         $this->publishable_key      = $this->test_mode ? $this->get_option( 'test_publishable_key' ) : $this->get_option( 'publishable_key' );
         $this->auto_charge          = $this->get_option( 'auto_charge' );
+        $this->token_only           = $this->get_option( 'token_only' );
 
         $test_message = 'TEST MODE ENABLED. In test mode, you can use the card numbers listed in <a href="https://magpie.im/documentation/#section/Test-Cards" target="_blank" rel="noopener noreferrer">documentation</a>.';
 
@@ -105,7 +106,14 @@ class WC_Magpie_Gateway extends WC_Payment_Gateway {
                 'title'       => 'Auto Charge',
                 'label'       => 'Enable Auto Charge',
                 'type'        => 'checkbox',
-                'description' => 'For automatic credit charge. Uncheck this if you want to charge customer after order is completed.',
+                'description' => 'For automatic credit charge. Check this if grand total does not change.',
+                'default'     => 'no',
+                'desc_tip'    => true,
+            ),'token_only' => array(
+                'title'       => 'Token Only',
+                'label'       => 'Enable Token Only',
+                'type'        => 'checkbox',
+                'description' => 'For creating token for later use. Check this if grand total could change.',
                 'default'     => 'no',
                 'desc_tip'    => true,
             ),
@@ -284,6 +292,7 @@ class WC_Magpie_Gateway extends WC_Payment_Gateway {
             'order_id'          => $order->get_order_number(),
             'stmt_desc'         => get_bloginfo( 'name' ),
             'public_key'        => $this->publishable_key,
+            'token_only'        => $this->token_only === 'yes' ? true : false,
             'private_key'       => $this->private_key,
             'description'       => $this->payment_description,
             'auto_charge'       => $this->auto_charge === 'yes' ? true : false,
@@ -341,6 +350,47 @@ class WC_Magpie_Gateway extends WC_Payment_Gateway {
         }
     }
 
+    public function process_token_only( $order_id, $amount, $order ) {
+        $magpie = new WC_Magpie();
+        $magpie_backend = new WC_Magpie_Backend();
+
+        $token = $magpie_backend->get_token( $order_id );
+
+        $token_id = $token['token_id'];
+
+        $create_token_res = $magpie->retrieve_token( $token_id, $this->publishable_key );
+
+        $card_token = json_decode( $create_token_res );
+        
+        $charge_payload = array(
+            'amount'                => $amount,
+            'source'                => $card_token->id,
+            'description'           => $this->description,
+            'statement_descriptor'  => get_bloginfo( 'name' ),
+            'capture'               => true,
+        );
+
+        $charge_response = $magpie->create_charge( $charge_payload, $this->private_key );
+
+        $charge_data = json_decode( $charge_response );
+
+        if ( isset( $charge_data->error ) ) {
+            $error = $charge_data->error->message. '. Failed to create charge.';
+
+            $order->add_order_note( 'Payment failed please try again. ' . $error, false );
+
+            $data = array(
+                'order_id'          => $order_id,
+                'message'           => $error,
+                'new_order_status'  => 'failed',
+            );
+    
+            $magpie_backend->update_order_status( $data );
+        }
+
+        $magpie_backend->save_magpie_charge( $order_id, $charge_data );
+    }
+
     /*
      * Process payment charge here
      */
@@ -351,6 +401,10 @@ class WC_Magpie_Gateway extends WC_Payment_Gateway {
         $order = wc_get_order( $order_id );
 
         $amount = $order->get_total();
+
+        if ( $this->token_only === 'yes' ) {
+            $this->process_token_only( $order_id, $amount, $order );
+        }
 
         $charge = $magpie_backend->get_order_status( $order_id );
 
