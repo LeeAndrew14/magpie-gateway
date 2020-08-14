@@ -1,58 +1,50 @@
 <?php
 /** Custom Magpie Backend Class */
 class WC_Magpie_Backend {
-
-    protected $db;
-    protected $_con;
-
-    public function __construct() {
-        $this->_con = new Magpie_Database();
-        $this->db = $this->_con->connect();
-    }
-
     public function get_user_by_email( $email ) {
-        $sql = "SELECT * FROM magpie_customer_data WHERE email = '$email'";
+        $sql =  "SELECT * FROM {prefix}magpie_customer_data WHERE email = '$email'";
 
-        $result = $this->db->query( $sql );
+        $result = $this->execute( $sql, 'get');
 
-        return $result->fetch_assoc();
+        return $result[0];
     }
 
     public function get_magpie_customer_by_email( $email ) {
-        $sql = "SELECT * FROM magpie_customer WHERE email = '$email'";
 
-        $result = $this->db->query( $sql );
+        $sql =  "SELECT * FROM {prefix}magpie_customer WHERE email = '$email'";
 
-        return $result->fetch_assoc();
+        $result = $this->execute( $sql, 'get');
+
+        return $result[0];
     }
 
     public function get_order_status( $order_id ) {
-        $sql = "SELECT * FROM magpie_order_status WHERE order_id = '$order_id'";
+        $sql =  "SELECT * FROM {prefix}magpie_order_status WHERE order_id = '$order_id'";
 
-        $result = $this->db->query( $sql );
+        $result = $this->execute( $sql, 'get');
 
-        return $result->fetch_assoc();
+        return $result[0];
     }
 
     public function get_token( $order_id ) {
-        $sql = "SELECT * FROM magpie_token WHERE order_id = '$order_id'";
+        $sql =  "SELECT * FROM {prefix}magpie_token WHERE order_id = '$order_id'";
+        
+        $result = $this->execute( $sql, 'get' );
 
-        $result = $this->db->query( $sql );
-
-        return $result->fetch_assoc();
+        return $result[0];
     }
 
     public function check_if_order_exist( $order_id ) {
-        $sql = "SELECT * FROM magpie_order_status WHERE order_id = '$order_id'";
+        $sql =  "SELECT * FROM {prefix}magpie_order_status WHERE order_id = '$order_id'";
 
-        $result = $this->db->query( $sql );
+        $result = $this->execute( $sql, 'get');
 
-        return $result->num_rows;
+        return $result[0];
     }
 
     public function save_customer_details( $data ) {
-        $sql = 
-            "INSERT INTO magpie_customer_data (
+        $sql =  
+            "INSERT INTO {prefix}magpie_customer_data (
                 email, 
                 first_name, 
                 last_name,
@@ -100,13 +92,9 @@ class WC_Magpie_Backend {
                 '$data->shipping_country'
         )";
 
-        $this->db->query( $sql );
+        $result = $this->execute( $sql, 'insert');
 
-        $error = mysqli_error( $this->db );
-        
-        $success = $this->db->affected_rows;
-
-        return $error ? $error : $success;
+        return $result;
     }
 
     public function save_magpie_customer( $data ) {
@@ -116,8 +104,8 @@ class WC_Magpie_Backend {
 
         $created = date( 'Y/m/d H:i:s', intval( $data->created ) );
 
-        $sql = 
-            "INSERT INTO magpie_customer (
+        $sql =  
+            "INSERT INTO {prefix}magpie_customer (
                 customer_id,
                 account_balance,
                 created,
@@ -143,18 +131,14 @@ class WC_Magpie_Backend {
                 '$data->object'
         )";
 
-        $this->db->query( $sql );
+        $result = $this->execute( $sql, 'insert');
 
-        $error = mysqli_error( $this->db );
-        
-        $success = $this->db->affected_rows;
-
-        return $error ? $error : $success;
+        return $result;
     }
 
     public function save_magpie_token( $order_id, $data ) {
-        $sql = 
-            "INSERT INTO magpie_token ( 
+        $sql =  
+            "INSERT INTO {prefix}magpie_token ( 
                 order_id, 
                 token_id, 
                 object )
@@ -164,20 +148,16 @@ class WC_Magpie_Backend {
                 '$data->object'
         )";
 
-        $this->db->query( $sql );
+        $result = $this->execute( $sql, 'insert');
 
-        $error = mysqli_error( $this->db );
-        
-        $success = $this->db->affected_rows;
-
-        return $error ? $error : $success;
+        return $result;
     }
 
     public function save_magpie_charge( $order_id, $data ) {
         $charge_details = json_encode( $data );
 
-        $sql = 
-            "INSERT INTO magpie_charge (
+        $sql =  
+            "INSERT INTO {prefix}magpie_charge (
                 order_id,
                 charge_id,
                 charge_details ) 
@@ -187,13 +167,9 @@ class WC_Magpie_Backend {
                 '$charge_details' 
         )";
 
-        $this->db->query( $sql );
+        $result = $this->execute( $sql, 'insert');
 
-        $error = mysqli_error( $this->db );
-        
-        $success = $this->db->affected_rows;
-
-        return $error ? $error : $success;
+        return $result;
     }
 
     public function save_order_status( $data ) {
@@ -201,8 +177,8 @@ class WC_Magpie_Backend {
         $order_id       = $data['order_id'];
         $order_status   = $data['order_status']; 
 
-        $sql = 
-            "INSERT INTO magpie_order_status (
+        $sql =  
+            "INSERT INTO {prefix}magpie_order_status (
                 order_id, 
                 order_status,
                 message )
@@ -212,13 +188,9 @@ class WC_Magpie_Backend {
                 '$message'
         )";
 
-        $this->db->query( $sql );
+        $result = $this->execute( $sql, 'insert');
 
-        $error = mysqli_error( $this->db );
-        
-        $success = $this->db->affected_rows;
-
-        return $error ? $error : $success;
+        return $result;
     }
 
     public function update_order_status( $data ) {
@@ -226,39 +198,51 @@ class WC_Magpie_Backend {
         $order_id       = $data['order_id'];
         $order_status   = $data['new_order_status']; 
 
-        $sql = 
-            "UPDATE magpie_order_status 
+        $sql =  
+            "UPDATE {prefix}magpie_order_status 
             SET 
                 order_status = '$order_status',
                 message = '$message' 
             WHERE 
                 order_id = '$order_id'";
 
-        $this->db->query( $sql );
+        $result = $this->execute( $sql, 'insert');
 
-        $error = mysqli_error( $this->db );
-        
-        $success = $this->db->affected_rows;
-
-        return $error ? $error : $success;
+        return $result;
     }
 
     public function update_magpie_user_source( $customer_id, $data ) {
         $sources = json_encode( $data->sources );
 
-        $sql = 
-            "UPDATE magpie_customer
+        $sql =  
+            "UPDATE {prefix}magpie_customer
             SET
                 sources = '$sources'
             WHERE
                 customer_id = '$customer_id'";
 
-        $this->db->query( $sql );
-        
-        $error = mysqli_error( $this->db );
-        
-        $success = $this->db->affected_rows;
+        $result = $this->execute( $sql, 'insert');
 
-        return $error ? $error : $success;
+        return $result;
+    }
+
+    public function execute( $query, $action ) {
+        global $wpdb;
+        
+        $prefix = $wpdb->prefix;
+
+        if ( $action === 'get' ) {
+            $sql = strtr( $query, array( '{prefix}' => $prefix) );
+
+            $result = $wpdb->get_results( $sql, ARRAY_A );
+
+            return $result;
+        } elseif ( $action === 'insert' ||$action === 'update' ) {
+            $sql = strtr( $query, array( '{prefix}' => $prefix) );
+
+            $result = $wpdb->query( $sql );
+
+            return $result;
+        }
     }
 }

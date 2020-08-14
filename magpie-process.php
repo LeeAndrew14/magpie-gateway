@@ -2,7 +2,6 @@
 
 include( 'includes/magpie-api.php' );
 include( 'includes/magpie-backend.php' );
-include( 'config/magpie-database.php' );
 
 $magpie = new WC_Magpie();
 $magpie_backend = new WC_Magpie_Backend();
