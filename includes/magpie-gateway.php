@@ -330,7 +330,11 @@ class WC_Magpie_Gateway extends WC_Payment_Gateway {
 
         if ( $order_status['order_status'] === 'processing' ) {
             // Set order status
-            $order->update_status( 'processing' );
+            if ( $this->token_only === 'yes' || $this->auto_charge === 'no' ) {
+                $order->update_status( 'pending_payment' );
+            } else {
+                $order->update_status( 'processing' );
+            }
 
             // Reduce stock levels
             wc_reduce_stock_levels( $order_id );
@@ -348,47 +352,6 @@ class WC_Magpie_Gateway extends WC_Payment_Gateway {
 
             return;
         }
-    }
-
-    public function process_token_only( $order_id, $amount, $order ) {
-        $magpie = new WC_Magpie();
-        $magpie_backend = new WC_Magpie_Backend();
-
-        $token = $magpie_backend->get_token( $order_id );
-
-        $token_id = $token['token_id'];
-
-        $create_token_res = $magpie->retrieve_token( $token_id, $this->publishable_key );
-
-        $card_token = json_decode( $create_token_res );
-        
-        $charge_payload = array(
-            'amount'                => $amount,
-            'source'                => $card_token->id,
-            'description'           => $this->description,
-            'statement_descriptor'  => get_bloginfo( 'name' ),
-            'capture'               => true,
-        );
-
-        $charge_response = $magpie->create_charge( $charge_payload, $this->private_key );
-
-        $charge_data = json_decode( $charge_response );
-
-        if ( isset( $charge_data->error ) ) {
-            $error = $charge_data->error->message. '. Failed to create charge.';
-
-            $order->add_order_note( 'Payment failed please try again. ' . $error, false );
-
-            $data = array(
-                'order_id'          => $order_id,
-                'message'           => $error,
-                'new_order_status'  => 'failed',
-            );
-    
-            $magpie_backend->update_order_status( $data );
-        }
-
-        $magpie_backend->save_magpie_charge( $order_id, $charge_data );
     }
 
     /*
@@ -451,9 +414,53 @@ class WC_Magpie_Gateway extends WC_Payment_Gateway {
             $magpie_backend->update_order_status( $data );
         }
     }
-}
 
-add_action( 'woocommerce_before_order_itemmeta', 'testing_stuff', 10, 3 );
-function testing_stuff( $item_id, $item, $order_id) {
-    // For testing
+    public function process_token_only( $order_id, $amount, $order ) {
+        $magpie = new WC_Magpie();
+        $magpie_backend = new WC_Magpie_Backend();
+
+        $token = $magpie_backend->get_token( $order_id );
+
+        $token_id = $token['token_id'];
+
+        $create_token_res = $magpie->retrieve_token( $token_id, $this->publishable_key );
+
+        $card_token = json_decode( $create_token_res );
+        
+        $charge_payload = array(
+            'amount'                => $amount,
+            'source'                => $card_token->id,
+            'description'           => $this->description,
+            'statement_descriptor'  => get_bloginfo( 'name' ),
+            'capture'               => true,
+        );
+
+        $charge_response = $magpie->create_charge( $charge_payload, $this->private_key );
+
+        $charge_data = json_decode( $charge_response );
+
+        if ( isset( $charge_data->error ) ) {
+            $error = $charge_data->error->message. '. Failed to create charge.';
+
+            $order->add_order_note( 'Payment failed please try again. ' . $error, false );
+
+            $data = array(
+                'order_id'          => $order_id,
+                'message'           => $error,
+                'new_order_status'  => 'failed',
+            );
+    
+            $magpie_backend->update_order_status( $data );
+        }
+
+        $data = array(
+            'order_id'          => $order_id,
+            'message'           => $charge_data->id,
+            'new_order_status'  => 'processing',
+        );
+
+        $magpie_backend->save_magpie_charge( $order_id, $charge_data );
+        
+        $magpie_backend->update_order_status( $data );
+    }
 }

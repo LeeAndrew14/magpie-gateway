@@ -1,4 +1,6 @@
 -- Not final schema!
+-- For documentatoin purposes only
+-- Wordpress table prefix required for table name
 
 drop table if exists magpie_customer_data;
 
