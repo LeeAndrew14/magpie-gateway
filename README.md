@@ -1,1 +1,1 @@
-Paymongo gateway for Woocommerce (experimental WIP)
+Magpie gateway for Woocommerce (experimental WIP)
