@@ -27,7 +27,15 @@ class WC_Magpie_Backend {
     }
 
     public function get_order_status( $order_id ) {
-        $sql = "SELECT * FROM magpie_order_status WHERE order_id = '{$order_id}'";
+        $sql = "SELECT * FROM magpie_order_status WHERE order_id = '$order_id'";
+
+        $result = $this->db->query( $sql );
+
+        return $result->fetch_assoc();
+    }
+
+    public function get_token( $order_id ) {
+        $sql = "SELECT * FROM magpie_token WHERE order_id = '$order_id'";
 
         $result = $this->db->query( $sql );
 
