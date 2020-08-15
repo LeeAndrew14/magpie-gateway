@@ -22,7 +22,7 @@ function magpie_db_init() {
         $magpie_customer_data   = $wpdb->prefix . 'magpie_customer_data';
 
         $sql = 
-            "CREATE TABLE IF NOT EXISTS $magpie_token (
+            "CREATE TABLE $magpie_token (
                 id INT(6) NOT NULL auto_increment,
                 order_id INT(6),
                 token_id TEXT,
@@ -32,7 +32,7 @@ function magpie_db_init() {
                 PRIMARY KEY (id)
             ) $charset_collate;
         
-            CREATE TABLE IF NOT EXISTS $magpie_charge (
+            CREATE TABLE $magpie_charge (
                 id INT(6) NOT NULL auto_increment,
                 order_id INT(6),
                 charge_id TEXT,
@@ -42,7 +42,7 @@ function magpie_db_init() {
                 PRIMARY KEY (id)
             ) $charset_collate;
 
-            CREATE TABLE IF NOT EXISTS $magpie_customer (
+            CREATE TABLE $magpie_customer (
                 id INT(6) NOT NULL auto_increment,
                 customer_id TEXT,
                 account_balance double,
@@ -60,7 +60,7 @@ function magpie_db_init() {
                 PRIMARY KEY (id)
             ) $charset_collate;
             
-            CREATE TABLE IF NOT EXISTS $magpie_order_status(
+            CREATE TABLE $magpie_order_status(
                 id INT(6) NOT NULL auto_increment,
                 order_id INT(6), 
                 order_status TEXT,
@@ -70,7 +70,7 @@ function magpie_db_init() {
                 PRIMARY KEY (id)
             ) $charset_collate;
             
-            CREATE TABLE IF NOT EXISTS $magpie_customer_data(
+            CREATE TABLE $magpie_customer_data(
                 id INT(6) NOT NULL auto_increment,
                 email TEXT,
                 first_name TEXT,
@@ -104,6 +104,8 @@ function magpie_db_init() {
                 updated_at DATETIME ON UPDATE current_timestamp,
                 PRIMARY KEY (id)
             ) $charset_collate;";
+
+        require_once( ABSPATH . 'wp-admin/includes/upgrade.php' );
 
         dbDelta( $sql );
 
