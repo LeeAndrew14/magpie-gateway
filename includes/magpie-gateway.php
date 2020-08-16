@@ -576,21 +576,3 @@ class WC_Magpie_Gateway extends WC_Payment_Gateway {
         $magpie_backend->update_order_status( $data );
     }
 }
-
-add_action( 'woocommerce_before_order_itemmeta', 'testing_stuff', 10, 3 );
-function testing_stuff( $item_id, $item, $order) {
-    // For testing
-
-    // $magpie = new WC_Magpie();
-    // $magpie_backend = new WC_Magpie_Backend();
-
-    // global $woocommerce, $post;
-
-    // $order = new WC_Order($post->ID);
-
-    // $order_id = $order->get_id();
-
-    // $token = $magpie_backend->get_token($order_id );
-
-    // print_r( $token );
-}
