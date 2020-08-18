@@ -306,7 +306,7 @@ class WC_Magpie_Gateway extends WC_Payment_Gateway {
         if ( $order_status['order_status'] === 'processing' ) {
             // Set order status
             if ( $this->token_only === 'yes' || $this->auto_charge === 'no' ) {
-                $order->update_status( 'pending_payment' );
+                $order->update_status( 'pending' );
             } else {
                 $order->update_status( 'processing' );
             }
@@ -377,7 +377,7 @@ class WC_Magpie_Gateway extends WC_Payment_Gateway {
             $magpie_customer = json_decode( $create_customer_res );
     
             if ( isset( $magpie_customer->error ) ) {
-                $message = $magpie_customer->error->message . '. Failed to create customer.';
+                $message = $magpie_customer->error->message . ' Failed to create customer.';
     
                 wc_add_notice( 'Transaction failed! ' . $message, 'error' );
             }
@@ -418,8 +418,7 @@ class WC_Magpie_Gateway extends WC_Payment_Gateway {
         $card_token = json_decode( $token_response );
 
         if ( isset( $card_token->error ) ) {
-
-            $message = $card_token->error->message . '. Failed to create token.';
+            $message = $card_token->error->message . ' Failed to create token.';
 
             wc_add_notice( 'Transaction failed! ' . $message, 'error' );
         }
@@ -440,7 +439,7 @@ class WC_Magpie_Gateway extends WC_Payment_Gateway {
             $charge_data = json_decode( $charge_response );
 
             if ( isset( $charge_data->error ) ) {
-                $message = $charge_data->error->message. '. Failed to create charge.';
+                $message = $charge_data->error->message. ' Failed to create charge.';
 
                 wc_add_notice( 'Transaction failed! ' . $message, 'error' );
             }
