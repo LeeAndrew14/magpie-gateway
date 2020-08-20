@@ -305,11 +305,7 @@ class WC_Magpie_Gateway extends WC_Payment_Gateway {
 
         if ( $order_status['order_status'] === 'processing' ) {
             // Set order status
-            if ( $this->token_only === 'yes' || $this->auto_charge === 'no' ) {
-                $order->update_status( 'pending' );
-            } else {
-                $order->update_status( 'processing' );
-            }
+            $order->update_status( 'processing' );
 
             // Reduce stock levels
             wc_reduce_stock_levels( $order_id );
@@ -429,7 +425,7 @@ class WC_Magpie_Gateway extends WC_Payment_Gateway {
             $charge_payload = array(
                 'amount'                => $amount,
                 'source'                => $card_token->id,
-                'description'           => $this->payment_description,
+                'description'           => '[Tag]:' . $this->payment_description . '[Order ID]:' . $order_id . '[Customer Name]:' . $customer_name,
                 'statement_descriptor'  => get_bloginfo( 'name' ),
                 'capture'               => $this->auto_charge,
             );
@@ -470,10 +466,12 @@ class WC_Magpie_Gateway extends WC_Payment_Gateway {
 
         $order = wc_get_order( $order_id );
 
+        $customer_name = $order->get_billing_first_name() . ' ' . $order->get_billing_last_name();
+
         $amount = $order->get_total();
 
         if ( $this->token_only === 'yes' ) {
-            $this->process_token_only( $order_id, $amount, $order );
+            $this->process_token_only( $order_id, $amount, $order, $customer_name );
         }
 
         $charge = $magpie_backend->get_order_status( $order_id );
@@ -491,8 +489,10 @@ class WC_Magpie_Gateway extends WC_Payment_Gateway {
             'message'   => $is_charge->id,
         );
 
+        $curreny_symbol =  get_woocommerce_currency_symbol();
+
         if ( $is_charge->captured ) {
-            $order->add_order_note( 'Payment successfully charged PHP ' . $is_charge->amount, true );
+            $order->add_order_note( 'Payment successfully charged ' . $curreny_symbol . ' ' . $is_charge->amount, true );
 
             $data['new_order_status'] = 'completed';
     
@@ -506,13 +506,15 @@ class WC_Magpie_Gateway extends WC_Payment_Gateway {
         $body = json_decode( $response );
 
         if ( ! isset( $body->error ) ) {
-            $order->add_order_note( 'Payment successfully charged PHP ' . $body->amount, true );
+            $order->add_order_note( 'Payment successfully charged ' .  $curreny_symbol . ' ' . $is_charge->amount, true );
 
             wc_reduce_stock_levels( $order_id );
 
             $data['new_order_status'] = 'completed';
 
             $magpie_backend->update_order_status( $data );
+
+            return;
         } else {
             $error = $body->error->message;
 
@@ -521,10 +523,12 @@ class WC_Magpie_Gateway extends WC_Payment_Gateway {
             $data['new_order_status'] = 'failed';
     
             $magpie_backend->update_order_status( $data );
+
+            return;
         }
     }
 
-    public function process_token_only( $order_id, $amount, $order ) {
+    public function process_token_only( $order_id, $amount, $order, $customer_name) {
         $magpie = new WC_Magpie();
         $magpie_backend = new WC_Magpie_Backend();
 
@@ -541,7 +545,7 @@ class WC_Magpie_Gateway extends WC_Payment_Gateway {
         $charge_payload = array(
             'amount'                => $amount,
             'source'                => $card_token->id,
-            'description'           => $this->description,
+            'description'           => '[Tag]:' . $this->payment_description . '[Order ID]:' . $order_id . '[Customer Name]:' . $customer_name,
             'statement_descriptor'  => get_bloginfo( 'name' ),
             'capture'               => true,
         );
@@ -551,7 +555,7 @@ class WC_Magpie_Gateway extends WC_Payment_Gateway {
         $charge_data = json_decode( $charge_response );
 
         if ( isset( $charge_data->error ) ) {
-            $error = $charge_data->error->message. '. Failed to create charge.';
+            $error = $charge_data->error->message . ' Failed to create charge.';
 
             $order->add_order_note( 'Payment failed please try again. ' . $error, false );
 
