@@ -137,7 +137,7 @@ class WC_Magpie {
     /** CURL functions */
     public function curl_post( $magpie_api_url, $data, $api_key ) {
         $params = array(
-            'url' => 'https://api.magpie.im/v1/'.$magpie_api_url,
+            'url' => 'https://api.magpie.im/v1.1/'.$magpie_api_url,
             'request' => 'POST',
         );
 
@@ -146,7 +146,7 @@ class WC_Magpie {
 
     public function curl_get( $magpie_api_url, $data, $api_key ) {
         $params = array(
-            'url' => 'https://api.magpie.im/v1/'.$magpie_api_url,
+            'url' => 'https://api.magpie.im/v1.1/'.$magpie_api_url,
             'request' => 'GET',
         );
 
@@ -155,7 +155,7 @@ class WC_Magpie {
 
     public function curl_delete( $magpie_api_url, $data, $api_key ) {
         $params = array(
-            'url' => 'https://api.magpie.im/v1/'.$magpie_api_url,
+            'url' => 'https://api.magpie.im/v1.1/'.$magpie_api_url,
             'request' => 'DELETE',
         );
 
@@ -164,7 +164,7 @@ class WC_Magpie {
 
     public function curl_put( $magpie_api_url, $data, $api_key ) {
         $params = array(
-            'url' => 'https://api.magpie.im/v1/'.$magpie_api_url,
+            'url' => 'https://api.magpie.im/v1.1/'.$magpie_api_url,
             'request' => 'PUT',
         );
 

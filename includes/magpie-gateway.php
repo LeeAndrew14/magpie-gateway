@@ -299,7 +299,15 @@ class WC_Magpie_Gateway extends WC_Payment_Gateway {
             $this->create_magpie_customer( $token_payload, $customer_details );
         }
 
-        $this->charge_condition( $order_id, $order->get_total(), $token_payload );
+        $total =  $order->get_total() * 100;
+
+        // A positive integer with minimum amount of 3000.
+        if ( $total < 3000 ) {  
+            wc_add_notice(  'Minimum transaction should be equal or higher than 30 PHP', 'error' );
+            return;
+        }
+
+        $this->charge_condition( $order_id, $total, $token_payload );
 
         $order_status = $magpie_backend->get_order_status( $order_id );
 
@@ -409,6 +417,10 @@ class WC_Magpie_Gateway extends WC_Payment_Gateway {
         $magpie = new WC_Magpie();
         $magpie_backend = new WC_Magpie_Backend();
 
+        $order = wc_get_order( $order_id );
+
+        $customer_name = $order->get_billing_first_name() . ' ' . $order->get_billing_last_name();
+
         $token_response = $magpie->create_token( $token_payload, $this->publishable_key );
 
         $card_token = json_decode( $token_response );
@@ -468,7 +480,7 @@ class WC_Magpie_Gateway extends WC_Payment_Gateway {
 
         $customer_name = $order->get_billing_first_name() . ' ' . $order->get_billing_last_name();
 
-        $amount = $order->get_total();
+        $amount = $order->get_total() * 100;
 
         if ( $this->token_only === 'yes' ) {
             $this->process_token_only( $order_id, $amount, $order, $customer_name );
@@ -491,8 +503,10 @@ class WC_Magpie_Gateway extends WC_Payment_Gateway {
 
         $curreny_symbol =  get_woocommerce_currency_symbol();
 
-        if ( $is_charge->captured ) {
-            $order->add_order_note( 'Payment successfully charged ' . $curreny_symbol . ' ' . $is_charge->amount, true );
+        $charge_amount = number_format( $is_charge->amount / 100, 2 );
+
+        if ( $is_charge->captured && $body->status == 'succeeded' ) {
+            $order->add_order_note( 'Payment successfully charged ' . $curreny_symbol . ' ' . $charge_amount , true );
 
             $data['new_order_status'] = 'completed';
     
@@ -504,9 +518,10 @@ class WC_Magpie_Gateway extends WC_Payment_Gateway {
         $response = $magpie->capture_charge( $charge_id, $amount, $this->private_key );
 
         $body = json_decode( $response );
-
-        if ( ! isset( $body->error ) ) {
-            $order->add_order_note( 'Payment successfully charged ' .  $curreny_symbol . ' ' . $is_charge->amount, true );
+        
+        if ( ! isset( $body->error ) && $body->status == 'succeeded' ) {
+            
+            $order->add_order_note( 'Payment successfully charged ' .  $curreny_symbol . ' ' . $charge_amount, true );
 
             wc_reduce_stock_levels( $order_id );
 
