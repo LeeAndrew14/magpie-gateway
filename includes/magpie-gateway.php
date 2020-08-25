@@ -307,7 +307,7 @@ class WC_Magpie_Gateway extends WC_Payment_Gateway {
             return;
         }
 
-        $this->charge_condition( $order_id, $total, $token_payload );
+        $this->charge_condition( $order_id, $total, $token_payload, $customer_name );
 
         $order_status = $magpie_backend->get_order_status( $order_id );
 
@@ -413,13 +413,11 @@ class WC_Magpie_Gateway extends WC_Payment_Gateway {
         }
     }
 
-    public function charge_condition( $order_id, $amount, $token_payload ) {
+    public function charge_condition( $order_id, $amount, $token_payload, $customer_name ) {
         $magpie = new WC_Magpie();
         $magpie_backend = new WC_Magpie_Backend();
 
         $order = wc_get_order( $order_id );
-
-        $customer_name = $order->get_billing_first_name() . ' ' . $order->get_billing_last_name();
 
         $token_response = $magpie->create_token( $token_payload, $this->publishable_key );
 
@@ -505,7 +503,7 @@ class WC_Magpie_Gateway extends WC_Payment_Gateway {
 
         $charge_amount = number_format( $is_charge->amount / 100, 2 );
 
-        if ( $is_charge->captured && $body->status == 'succeeded' ) {
+        if ( $is_charge->captured && $is_charge->status == 'succeeded' ) {
             $order->add_order_note( 'Payment successfully charged ' . $curreny_symbol . ' ' . $charge_amount , true );
 
             $data['new_order_status'] = 'completed';
@@ -519,7 +517,7 @@ class WC_Magpie_Gateway extends WC_Payment_Gateway {
 
         $body = json_decode( $response );
         
-        if ( ! isset( $body->error ) && $body->status == 'succeeded' ) {
+        if ( ! isset( $body->error ) && $body->captured == true && $body->status == 'succeeded' ) {
             
             $order->add_order_note( 'Payment successfully charged ' .  $curreny_symbol . ' ' . $charge_amount, true );
 
@@ -543,7 +541,7 @@ class WC_Magpie_Gateway extends WC_Payment_Gateway {
         }
     }
 
-    public function process_token_only( $order_id, $amount, $order, $customer_name) {
+    public function process_token_only( $order_id, $amount, $order, $customer_name ) {
         $magpie = new WC_Magpie();
         $magpie_backend = new WC_Magpie_Backend();
 
