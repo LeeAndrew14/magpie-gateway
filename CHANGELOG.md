@@ -1,5 +1,5 @@
 Changelogs: 
-v1.0.2
+v1.0.2 08-24-2020
 • Update Magpie API from v1 to v1.1
 • Add validation when total amount is less than minimum amount Magpie required which is .50 USD
     - Current conversion of .50 USD to PHP is ₱ 24.32 multiplied by 100 is 2432
