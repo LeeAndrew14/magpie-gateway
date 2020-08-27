@@ -5,7 +5,7 @@
  * Description: Credit card payments.
  * Author: Code Disruptors Inc.
  * Author URI: https://github.com/LeeAndrew14
- * Version: 1.0.2
+ * Version: 1.0.3
  */
 
 // Block direct access to php files
