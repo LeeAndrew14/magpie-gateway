@@ -9,7 +9,7 @@ class WC_Magpie_Backend {
 
         $result = $this->execute( $sql, 'get');
 
-        return $result[0];
+        return $result ? $result[0] : null;
     }
 
     public function get_magpie_customer_by_email( $email ) {
@@ -18,7 +18,7 @@ class WC_Magpie_Backend {
 
         $result = $this->execute( $sql, 'get');
 
-        return $result[0];
+        return $result ? $result[0] : null;
     }
 
     public function get_order_status( $order_id ) {
@@ -26,7 +26,7 @@ class WC_Magpie_Backend {
 
         $result = $this->execute( $sql, 'get');
 
-        return $result[0];
+        return $result ? $result[0] : null;
     }
 
     public function get_token( $order_id ) {
@@ -34,7 +34,7 @@ class WC_Magpie_Backend {
         
         $result = $this->execute( $sql, 'get' );
 
-        return $result[0];
+        return $result ? $result[0] : null;
     }
 
     public function check_if_order_exist( $order_id ) {
@@ -42,7 +42,7 @@ class WC_Magpie_Backend {
 
         $result = $this->execute( $sql, 'get');
 
-        return $result[0];
+        return $result ? $result[0] : null;
     }
 
     public function save_customer_details( $data ) {
@@ -209,7 +209,7 @@ class WC_Magpie_Backend {
             WHERE 
                 order_id = '$order_id'";
 
-        $result = $this->execute( $sql, 'insert');
+        $result = $this->execute( $sql, 'update');
 
         return $result;
     }
@@ -224,7 +224,7 @@ class WC_Magpie_Backend {
             WHERE
                 customer_id = '$customer_id'";
 
-        $result = $this->execute( $sql, 'insert');
+        $result = $this->execute( $sql, 'update');
 
         return $result;
     }
@@ -235,13 +235,13 @@ class WC_Magpie_Backend {
         $prefix = $wpdb->prefix;
 
         if ( $action === 'get' ) {
-            $sql = strtr( $query, array( '{prefix}' => $prefix) );
+            $sql = strtr( $query, array( '{prefix}' => $prefix ) );
 
             $result = $wpdb->get_results( $sql, ARRAY_A );
 
             return $result;
-        } elseif ( $action === 'insert' ||$action === 'update' ) {
-            $sql = strtr( $query, array( '{prefix}' => $prefix) );
+        } elseif ( $action === 'insert' || $action === 'update' ) {
+            $sql = strtr( $query, array( '{prefix}' => $prefix ) );
 
             $result = $wpdb->query( $sql );
 

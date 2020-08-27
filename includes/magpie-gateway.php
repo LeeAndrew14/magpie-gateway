@@ -35,8 +35,8 @@ class WC_Magpie_Gateway extends WC_Payment_Gateway {
         $this->test_mode            = 'yes' === $this->get_option( 'test_mode' );
         $this->private_key          = $this->test_mode ? $this->get_option( 'test_private_key' ) : $this->get_option( 'private_key' );
         $this->publishable_key      = $this->test_mode ? $this->get_option( 'test_publishable_key' ) : $this->get_option( 'publishable_key' );
-        $this->auto_charge          = $this->get_option( 'auto_charge' );
-        $this->token_only           = $this->get_option( 'token_only' );
+        $this->auto_charge          = 'yes' === $this->get_option( 'auto_charge' );
+        $this->token_only           = 'yes' === $this->get_option( 'token_only' );
 
         $test_message = 'TEST MODE ENABLED. In test mode, you can use the card numbers listed in <a href="https://magpie.im/documentation/#section/Test-Cards" target="_blank" rel="noopener noreferrer">documentation</a>.';
 
@@ -244,7 +244,7 @@ class WC_Magpie_Gateway extends WC_Payment_Gateway {
                 'shipping_state'      => $customer->get_shipping_state(),
                 'shipping_postcode'   => $customer->get_shipping_postcode(),
                 'shipping_country'    => $customer->get_shipping_country(),
-                'order_notes'         => $_POST['order_comments']  
+                'order_notes'         => isset( $_POST['order_comments'] ) ? $_POST['order_comments'] : null,
             ); 
         } else {
             $customer_details = array(
@@ -277,7 +277,9 @@ class WC_Magpie_Gateway extends WC_Payment_Gateway {
 
         list( $exp_month, $_, $exp_year ) = explode( ' ', $_POST['magpie_cc-card-expiry'] );
 
-        $customer_name = $order->get_billing_first_name() . ' ' . $order->get_billing_last_name();
+        $customer_name = $customer_details['first_name'] . ' ' . $customer_details['last_name'];
+
+        $customer_name === ' ' ? $customer_name = 'Guest' : $customer_name;
 
         $token_payload = array(
             'card_name'         => $customer_name,
@@ -368,9 +370,9 @@ class WC_Magpie_Gateway extends WC_Payment_Gateway {
         $magpie = new WC_Magpie();
         $magpie_backend = new WC_Magpie_Backend();
     
-        $customer = $magpie_backend->get_magpie_customer_by_email( $customer_details->email );
+        $customer = $magpie_backend->get_magpie_customer_by_email( $customer_details['email'] );
     
-        if ( ! $customer ) {
+        if ( ! $customer && ! empty( $customer_details['email'] ) ) {
             $customer = array(
                 'email' => $customer_details['email'],
                 'description' => $customer_details['billing_phone'],
@@ -383,7 +385,7 @@ class WC_Magpie_Gateway extends WC_Payment_Gateway {
             if ( isset( $magpie_customer->error ) ) {
                 $message = $magpie_customer->error->message . ' Failed to create customer.';
     
-                wc_add_notice( 'Transaction failed! ' . $message, 'error' );
+                return wc_add_notice( $message, 'error' );
             }
     
             $customer_id = $magpie_customer->id;
@@ -394,9 +396,9 @@ class WC_Magpie_Gateway extends WC_Payment_Gateway {
     
             if ( isset( $card_token->error ) ) {
     
-                $message = $card_token->error->message . '. Failed to create tokens.';
+                $message = $card_token->error->message . '. Failed to create token for Magpie customer update.';
     
-                wc_add_notice( 'Transaction failed! ' . $message, 'error' );
+                return wc_add_notice( $message, 'error' );
             }
     
             $update_customer_res = $magpie->update_customer( $customer_id, $card_token->id, $this->private_key );
@@ -406,7 +408,7 @@ class WC_Magpie_Gateway extends WC_Payment_Gateway {
             if ( isset( $update_user->error ) ) {
                 $message = $update_user->error->message. ' Failed to update customer.';
     
-                wc_add_notice( 'Transaction failed! ' . $message, 'error' );
+                return wc_add_notice( $message, 'error' );
             }
     
             $magpie_backend->save_magpie_customer( $update_customer );
@@ -424,14 +426,14 @@ class WC_Magpie_Gateway extends WC_Payment_Gateway {
         $card_token = json_decode( $token_response );
 
         if ( isset( $card_token->error ) ) {
-            $message = $card_token->error->message . ' Failed to create token.';
+            $message = $card_token->error->message . ' Failed to create token for creating a charge.';
 
-            wc_add_notice( 'Transaction failed! ' . $message, 'error' );
+            return wc_add_notice( $message, 'error' );
         }
 
         $magpie_backend->save_magpie_token( $order_id, $card_token );
 
-        if ( $card_token->id && $this->token_only === 'no' ) {
+        if ( $card_token->id && ! $this->token_only ) {
             $charge_payload = array(
                 'amount'                => $amount,
                 'source'                => $card_token->id,
@@ -447,7 +449,7 @@ class WC_Magpie_Gateway extends WC_Payment_Gateway {
             if ( isset( $charge_data->error ) ) {
                 $message = $charge_data->error->message. ' Failed to create charge.';
 
-                wc_add_notice( 'Transaction failed! ' . $message, 'error' );
+                return wc_add_notice( $message, 'error' );
             }
 
             $magpie_backend->save_magpie_charge( $order_id, $charge_data );
@@ -478,9 +480,11 @@ class WC_Magpie_Gateway extends WC_Payment_Gateway {
 
         $customer_name = $order->get_billing_first_name() . ' ' . $order->get_billing_last_name();
 
+        $customer_name === ' ' ? $customer_name = 'Guest' : $customer_name;
+
         $amount = $order->get_total() * 100;
 
-        if ( $this->token_only === 'yes' ) {
+        if ( $this->token_only ) {
             $this->process_token_only( $order_id, $amount, $order, $customer_name );
         }
 
@@ -499,12 +503,12 @@ class WC_Magpie_Gateway extends WC_Payment_Gateway {
             'message'   => $is_charge->id,
         );
 
-        $curreny_symbol =  get_woocommerce_currency_symbol();
+        $currency_symbol =  get_woocommerce_currency_symbol();
 
         $charge_amount = number_format( $is_charge->amount / 100, 2 );
 
         if ( $is_charge->captured && $is_charge->status == 'succeeded' ) {
-            $order->add_order_note( 'Payment successfully charged ' . $curreny_symbol . ' ' . $charge_amount , true );
+            $order->add_order_note( 'Payment successfully charged ' . $currency_symbol . ' ' . $charge_amount , true );
 
             $data['new_order_status'] = 'completed';
     
@@ -519,7 +523,7 @@ class WC_Magpie_Gateway extends WC_Payment_Gateway {
         
         if ( ! isset( $body->error ) && $body->captured == true && $body->status == 'succeeded' ) {
             
-            $order->add_order_note( 'Payment successfully charged ' .  $curreny_symbol . ' ' . $charge_amount, true );
+            $order->add_order_note( 'Payment successfully charged ' .  $currency_symbol . ' ' . $charge_amount, true );
 
             wc_reduce_stock_levels( $order_id );
 

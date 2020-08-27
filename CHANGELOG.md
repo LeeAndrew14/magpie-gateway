@@ -1,4 +1,11 @@
-Changelogs: 
+Changelogs:
+v1.0.3 08-27-2020
+• Proper handling when token only and auto charge are checked
+• Set default card name as Guest when payment occurred in admin side with no customer details supplied
+• Fix PHP notice in Magpie backend queries
+• Fix return wc error notice immediately when error occurred
+• Fix $currency_symbol typo
+
 v1.0.2 08-24-2020
 • Update Magpie API from v1 to v1.1
 • Add validation when total amount is less than minimum amount Magpie required which is .50 USD
