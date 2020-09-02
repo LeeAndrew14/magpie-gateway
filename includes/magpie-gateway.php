@@ -45,7 +45,7 @@ class WC_Magpie_Gateway extends WC_Payment_Gateway {
         // Process charge when order is completed
         add_action( 'woocommerce_order_status_completed', array( $this, 'process_order_charge' ) );
 
-        add_action( 'woocommerce_before_order_itemmeta', array( $this, 'check_payment_capture' ) );
+        add_action( 'woocommerce_admin_order_data_after_order_details', array( $this, 'check_payment_capture' ) );
         
         add_action( 'wp_enqueue_scripts', array( $this, 'payment_scripts' ) );
     }
@@ -285,7 +285,6 @@ class WC_Magpie_Gateway extends WC_Payment_Gateway {
 
         $total =  $order->get_total() * 100;
 
-        // A positive integer with minimum amount of 3000.
         if ( $total < 3000 ) {  
             wc_add_notice(  'Minimum transaction should be equal or higher than 30 PHP', 'error' );
 
@@ -510,7 +509,7 @@ class WC_Magpie_Gateway extends WC_Payment_Gateway {
         $charge_amount = number_format( $charge_details->amount / 100, 2 );
 
         if ( $charge_details->captured && $charge_details->status === 'succeeded' ) {
-            $order->add_order_note( 'Payment successfully charged ' . $currency_symbol . ' ' . $charge_amount , true );
+            $order->add_order_note( 'Payment successfully charged ' . $currency_symbol . ' ' . $charge_amount, true );
 
             $data['new_order_status'] = 'completed';
     
@@ -538,11 +537,13 @@ class WC_Magpie_Gateway extends WC_Payment_Gateway {
 
         $order = new WC_Order( $post->ID );
 
+        if ( $order->get_payment_method() !== 'magpie_cc' ) { return; }
+
         $order_status = $order->get_status();
 
         if ( $order_status === 'cancelled' || $order_status === 'completed' || $order_status === 'failed' || $order_status === 'on-hold' ) { return; }
 
-        $order_id =  $order->get_order_number();
+        $order_id = $order->get_order_number();
 
         $magpie_order_status = $magpie_backend->get_order_status( $order_id );
 
@@ -569,18 +570,16 @@ class WC_Magpie_Gateway extends WC_Payment_Gateway {
             $order->add_order_note( $message, false );
         }
 
-        $currency_symbol =  get_woocommerce_currency_symbol();
+        $currency_symbol = get_woocommerce_currency_symbol();
 
         $charge_amount = number_format( $charge_details->amount / 100, 2 );
 
         if ( $charge_details->captured && $charge_details->status === 'succeeded' ) {
-            $order->add_order_note( 'Payment successfully charged ' . $currency_symbol . ' ' . $charge_amount , true );
+            $order->add_order_note( 'Payment successfully charged ' . $currency_symbol . ' ' . $charge_amount, true );
 
             $data['new_order_status'] = 'completed';
     
             $magpie_backend->update_order_status( $data );
-
-            return;
         } else {
             wc_get_logger()->add( 
                 'magpie-gateway', 
