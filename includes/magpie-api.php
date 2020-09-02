@@ -43,7 +43,10 @@ class WC_Magpie {
             'source'                => $params['source'],
             'description'           => $params['description'],
             'statement_descriptor'  => $params['statement_descriptor'],
+            'gateway'               => $params['gateway'],
             'capture'               => $params['capture'],
+            'redirect_url'          => $params['redirect_url'],
+            'callback_url'          => $params['callback_url'],
         );
 
         $result = $this->curl_post( $magpie_api_url, $data, $private_key );
@@ -52,7 +55,7 @@ class WC_Magpie {
     }
 
     public function retrieve_charge( $charge_id, $private_key ) {
-        $magpie_api_url = 'charges/'.$charge_id;
+        $magpie_api_url = 'charges/' . $charge_id;
 
         $data = array( '' => '' );
 
@@ -62,7 +65,7 @@ class WC_Magpie {
     }
 
     public function capture_charge( $charge_id, $amount, $private_key ) {
-        $magpie_api_url = 'charges/'.$charge_id.'/capture';
+        $magpie_api_url = 'charges/' . $charge_id . '/capture';
 
         $data = array( 'amount' => $amount );
 
@@ -72,7 +75,7 @@ class WC_Magpie {
     }
 
     public function void_charge( $charge_id, $private_key ) {
-        $magpie_api_url = 'charges/'.$charge_id.'/void';
+        $magpie_api_url = 'charges/' . $charge_id . '/void';
 
         $data = array( '' => '' );
 
@@ -82,7 +85,7 @@ class WC_Magpie {
     }
 
     public function refund_charge( $charge_id, $amount, $private_key ) {
-        $magpie_api_url = 'charges/'.$charge_id.'/refund';
+        $magpie_api_url = 'charges/' . $charge_id . '/refund';
 
         $data = array( 'amount' => $amount );
 
@@ -105,7 +108,7 @@ class WC_Magpie {
     }
 
     public function retrieve_customer( $customer_id, $private_key ) {
-        $magpie_api_url = 'customers/'.$customer_id;
+        $magpie_api_url = 'customers/' . $customer_id;
 
         $data = array( '' => '' );
 
@@ -115,7 +118,7 @@ class WC_Magpie {
     }
 
     public function delete_customer( $customer_id, $private_key ) {
-        $magpie_api_url = 'customers/'.$customer_id;
+        $magpie_api_url = 'customers/' . $customer_id;
 
         $data = array( '' => '' );
 
@@ -125,7 +128,7 @@ class WC_Magpie {
     }
 
     public function update_customer( $customer_id, $token_id, $private_key ) {
-        $magpie_api_url = 'customers/'.$customer_id;
+        $magpie_api_url = 'customers/' . $customer_id;
 
         $data = array( 'source' => $token_id );
 
@@ -137,7 +140,7 @@ class WC_Magpie {
     /** CURL functions */
     public function curl_post( $magpie_api_url, $data, $api_key ) {
         $params = array(
-            'url' => 'https://api.magpie.im/v1.1/'.$magpie_api_url,
+            'url' => 'https://api.magpie.im/v1.1/' . $magpie_api_url,
             'request' => 'POST',
         );
 
@@ -146,7 +149,7 @@ class WC_Magpie {
 
     public function curl_get( $magpie_api_url, $data, $api_key ) {
         $params = array(
-            'url' => 'https://api.magpie.im/v1.1/'.$magpie_api_url,
+            'url' => 'https://api.magpie.im/v1.1/' . $magpie_api_url,
             'request' => 'GET',
         );
 
@@ -155,7 +158,7 @@ class WC_Magpie {
 
     public function curl_delete( $magpie_api_url, $data, $api_key ) {
         $params = array(
-            'url' => 'https://api.magpie.im/v1.1/'.$magpie_api_url,
+            'url' => 'https://api.magpie.im/v1.1/' . $magpie_api_url,
             'request' => 'DELETE',
         );
 
@@ -164,7 +167,7 @@ class WC_Magpie {
 
     public function curl_put( $magpie_api_url, $data, $api_key ) {
         $params = array(
-            'url' => 'https://api.magpie.im/v1.1/'.$magpie_api_url,
+            'url' => 'https://api.magpie.im/v1.1/' . $magpie_api_url,
             'request' => 'PUT',
         );
 

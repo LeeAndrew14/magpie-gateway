@@ -37,6 +37,14 @@ class WC_Magpie_Backend {
         return $result ? $result[0] : null;
     }
 
+    public function get_magpie_charge ( $order_id ) {
+        $sql =  "SELECT * FROM {prefix}magpie_charge WHERE order_id = '$order_id'";
+        
+        $result = $this->execute( $sql, 'get' );
+
+        return $result ? $result[0] : null;
+    }
+
     public function check_if_order_exist( $order_id ) {
         $sql =  "SELECT * FROM {prefix}magpie_order_status WHERE order_id = '$order_id'";
 

@@ -1,4 +1,10 @@
 Changelogs:
+v1.0.4 09-2-2020
+• Add 3d secure gateway, redirect and callback keys values pairs to magpie API
+• Add wp_get_logger for every API request for error tracking
+• Remove token only and auto charge to minimize error
+• Set capture to always true
+
 v1.0.3 08-27-2020
 • Proper handling when token only and auto charge are checked
 • Set default card name as Guest when payment occurred in admin side with no customer details supplied
