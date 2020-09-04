@@ -14,6 +14,9 @@ defined( 'ABSPATH' ) or die( 'No script kiddies please!' );
 // Include database init function
 include_once( 'magpie-db-init.php');
 
+// Include rewrite rule
+include_once( 'magpie-rewrite-rule.php');
+
 // Register Magpie database init hook
 register_activation_hook( __FILE__, 'magpie_db_init' );
 
