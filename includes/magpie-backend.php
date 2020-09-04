@@ -29,6 +29,14 @@ class WC_Magpie_Backend {
         return $result ? $result[0] : null;
     }
 
+    public function get_order_status_by_charge_id( $charge_id ) {
+        $sql =  "SELECT * FROM {prefix}magpie_order_status WHERE message = '$charge_id'";
+        
+        $result = $this->execute( $sql, 'get' );
+
+        return $result ? $result[0] : null;
+    }
+
     public function get_token( $order_id ) {
         $sql =  "SELECT * FROM {prefix}magpie_token WHERE order_id = '$order_id'";
         
@@ -186,15 +194,18 @@ class WC_Magpie_Backend {
     public function save_order_status( $data ) {
         $message        = $data['message'];
         $order_id       = $data['order_id'];
+        $order_key      = $data['order_key'];
         $order_status   = $data['order_status']; 
 
         $sql =  
             "INSERT INTO {prefix}magpie_order_status (
                 order_id, 
+                order_key,
                 order_status,
                 message )
             VALUES (
-                '$order_id', 
+                '$order_id',
+                '$order_key',
                 '$order_status',
                 '$message'
         )";
@@ -207,13 +218,15 @@ class WC_Magpie_Backend {
     public function update_order_status( $data ) {
         $message        = $data['message']; 
         $order_id       = $data['order_id'];
+        $order_key      = $data['order_key'];
         $order_status   = $data['new_order_status']; 
 
         $sql =  
             "UPDATE {prefix}magpie_order_status 
             SET 
-                order_status = '$order_status',
-                message = '$message' 
+                message = '$message', 
+                order_key = '$order_key',
+                order_status = '$order_status'
             WHERE 
                 order_id = '$order_id'";
 

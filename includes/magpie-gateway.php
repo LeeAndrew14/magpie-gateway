@@ -42,10 +42,8 @@ class WC_Magpie_Gateway extends WC_Payment_Gateway {
 
         // Saves the settings
         add_action( 'woocommerce_update_options_payment_gateways_' . $this->id, array( $this, 'process_admin_options' ) );
-        // Process charge when order is completed
-        add_action( 'woocommerce_order_status_completed', array( $this, 'process_order_charge' ) );
 
-        add_action( 'woocommerce_admin_order_data_after_order_details', array( $this, 'check_payment_capture' ) );
+        add_action( 'woocommerce_thankyou_magpie_cc', array( $this, 'check_payment_capture' ) );
         
         add_action( 'wp_enqueue_scripts', array( $this, 'payment_scripts' ) );
     }
@@ -277,16 +275,16 @@ class WC_Magpie_Gateway extends WC_Payment_Gateway {
 
         $check_customer = $this->check_customer( $customer_details );
 
-        $this->check_order( $order_id );
-
         if ( ! $check_customer ) {
             $this->create_magpie_customer( $token_payload, $customer_details );
         }
 
+        $this->check_order( $order_id, $order->get_order_key() );
+
         $total =  $order->get_total() * 100;
 
-        if ( $total < 3000 ) {  
-            wc_add_notice(  'Minimum transaction should be equal or higher than 30 PHP', 'error' );
+        if ( $total < 5000 ) {  
+            wc_add_notice(  'Minimum transaction should be equal or higher than 50 PHP', 'error' );
 
             return;
         }
@@ -296,12 +294,6 @@ class WC_Magpie_Gateway extends WC_Payment_Gateway {
         $order_status = $magpie_backend->get_order_status( $order_id );
 
         if ( $is_3d_secure && $order_status['order_status'] === 'processing' ) {
-            $order->update_status( 'processing' );
-
-            wc_reduce_stock_levels( $order_id );
-
-            WC()->cart->empty_cart();
-
             return array(
                 'result'    => 'success',
                 'redirect'  => $is_3d_secure,
@@ -340,7 +332,7 @@ class WC_Magpie_Gateway extends WC_Payment_Gateway {
         }
     }
     
-    public function check_order( $order_id ) {
+    public function check_order( $order_id, $order_key ) {
         $magpie = new WC_Magpie();
         $magpie_backend = new WC_Magpie_Backend();
 
@@ -349,6 +341,7 @@ class WC_Magpie_Gateway extends WC_Payment_Gateway {
         if ( ! $order_exist ) {
             $data = array(
                 'order_id'      => $order_id,
+                'order_key'     => $order_key,
                 'message'       => '',
                 'order_status'  => NULL,
             );
@@ -363,7 +356,7 @@ class WC_Magpie_Gateway extends WC_Payment_Gateway {
     
         $customer = $magpie_backend->get_magpie_customer_by_email( $customer_details['email'] );
 
-        $message = 'Something went wrong while processing your order, don\'t worry no charges has been made.
+        $message = 'Something went wrong while processing your order.
             <br>Kindly try again or try using other payment methods.
             <br>If the problem persist please contact us.';
     
@@ -418,9 +411,9 @@ class WC_Magpie_Gateway extends WC_Payment_Gateway {
         $token_response = $magpie->create_token( $token_payload, $this->publishable_key );
 
         $card_token = json_decode( $token_response );
-
-        $message = 'Something went wrong while processing your order, don\'t worry no charges has been made.
-            <br>Kindly try again or try using a different payment methods.
+            
+        $message = 'Something went wrong while processing your order.
+            <br>Kindly try again or try using other payment methods.
             <br>If the problem persist please contact us.';
 
         if ( isset( $card_token->error ) ) {
@@ -431,16 +424,18 @@ class WC_Magpie_Gateway extends WC_Payment_Gateway {
 
         $magpie_backend->save_magpie_token( $order_id, $card_token );
 
+        $description = '[Tag]:' . $this->payment_description . '[Order ID]:' . $order_id . '[Customer Name]:' . $customer_name;
+
         if ( $card_token->id ) {
             $charge_payload = array(
                 'amount'                => $amount,
                 'source'                => $card_token->id,
-                'description'           => '[Tag]:' . $this->payment_description . '[Order ID]:' . $order_id . '[Customer Name]:' . $customer_name,
+                'description'           => $description,
                 'statement_descriptor'  => get_bloginfo( 'name' ),
                 'gateway'               => 'magpie_3ds',
                 'capture'               => true,
-                'redirect_url'          => $order->get_checkout_order_received_url(),
-                'callback_url'          => get_bloginfo( 'wpurl' ) . '/3ds/callback',
+                'redirect_url'          => get_site_url() . '/',
+                'callback_url'          => get_site_url() . '/3ds/callback',
             );
 
             $charge_response = $magpie->create_charge( $charge_payload, $this->private_key );
@@ -458,6 +453,7 @@ class WC_Magpie_Gateway extends WC_Payment_Gateway {
             $data = array(
                 'order_id'          => $order_id,
                 'message'           => $charge_data->id,
+                'order_key'         => $order->get_order_key(),
                 'new_order_status'  => 'processing',
             );
 
@@ -469,85 +465,11 @@ class WC_Magpie_Gateway extends WC_Payment_Gateway {
         }
     }
 
-    public function process_order_charge( $order_id ) {
+    public function check_payment_capture( $order_id ) {
         $magpie = new WC_Magpie();
         $magpie_backend = new WC_Magpie_Backend();
 
-        $order = wc_get_order( $order_id );
-
-        $customer_name = $order->get_billing_first_name() . ' ' . $order->get_billing_last_name();
-
-        $customer_name === ' ' ? $customer_name = 'Guest' : $customer_name;
-
-        $amount = $order->get_total() * 100;
-
-        $charge = $magpie_backend->get_order_status( $order_id );
-
-        $charge_id = $charge['message'];
-
-        $response = $magpie->retrieve_charge( $charge_id, $this->private_key );
-
-        $charge_details = json_decode( $response );
-
-        if ( isset( $charge_details->error ) ) {
-            wc_get_logger()->add( 'magpie-gateway', 'Retrieve Charge Error ' . wc_print_r( $charge_details, true ) );
-
-            $message = $charge_details->error->message;
-
-            $order->add_order_note( $message , false );
-            
-            return;
-        }
-
-        $data = array(
-            'order_id'  => $order_id,
-            'message'   => $charge_details->id,
-        );
-
-        $currency_symbol =  get_woocommerce_currency_symbol();
-
-        $charge_amount = number_format( $charge_details->amount / 100, 2 );
-
-        if ( $charge_details->captured && $charge_details->status === 'succeeded' ) {
-            $order->add_order_note( 'Payment successfully charged ' . $currency_symbol . ' ' . $charge_amount, true );
-
-            $data['new_order_status'] = 'completed';
-    
-            $magpie_backend->update_order_status( $data );
-
-            return;
-        } else {
-            $redirect_message = $charge_details->redirect_response->message;
-
-            $order->add_order_note( $redirect_message, false );
-
-            $data['new_order_status'] = 'failed';
-
-            $magpie_backend->update_order_status( $data );
-
-            return;
-        }
-    }
-
-    public function check_payment_capture() {
-        global $post;
-
-        $magpie = new WC_Magpie();
-        $magpie_backend = new WC_Magpie_Backend();
-
-        $order = new WC_Order( $post->ID );
-
-        if ( $order->get_payment_method() !== 'magpie_cc' ) { return; }
-
-        $order_status = $order->get_status();
-
-        if ( $order_status === 'cancelled' || $order_status === 'completed' || $order_status === 'failed' || $order_status === 'on-hold' ) { return; }
-
-        $order_id = $order->get_order_number();
-
-        $magpie_order_status = $magpie_backend->get_order_status( $order_id );
-
-        if ( $magpie_order_status['order_status'] === 'failed' ) { return; }
+        $order = new WC_Order( $order_id );
 
         $get_charge = $magpie_backend->get_magpie_charge( $order_id );
 
@@ -559,6 +481,7 @@ class WC_Magpie_Gateway extends WC_Payment_Gateway {
 
         $data = array(
             'order_id'  => $order_id,
+            'order_key' => $order->get_order_key(),
             'message'   => $charge_details->id,
         );
 
@@ -568,18 +491,55 @@ class WC_Magpie_Gateway extends WC_Payment_Gateway {
             $message = $charge_details->error->message;
 
             $order->add_order_note( $message, false );
+
+            wc_add_notice( 'Something went wrong while processing your order. Please try again.
+                <br>If the problem persist please contact us.', 'error' );
+
+            return;
         }
 
         $currency_symbol = get_woocommerce_currency_symbol();
 
         $charge_amount = number_format( $charge_details->amount / 100, 2 );
-
+        
         if ( $charge_details->captured && $charge_details->status === 'succeeded' ) {
-            $order->add_order_note( 'Payment successfully charged ' . $currency_symbol . ' ' . $charge_amount, true );
+            $order->payment_complete();
+
+            $order->update_status( 'processing' );
+
+            wc_reduce_stock_levels( $order_id );
+
+            $order->add_order_note( 'Your order successfully charged ' . $currency_symbol . ' ' . $charge_amount . ', Thank you!', true );
 
             $data['new_order_status'] = 'completed';
     
             $magpie_backend->update_order_status( $data );
+        } elseif ( isset( $charge_details->redirect_response->state ) ) {
+            $state = $charge_details->redirect_response->state;
+
+            if ( $state === 'pending' ) {
+                $order->update_status( 'pending' );
+
+                wc_reduce_stock_levels( $order_id );
+
+                $order->add_order_note( 'Magpie minimum payment did not met.', false );
+
+                $data['new_order_status'] = 'failed';
+        
+                $magpie_backend->update_order_status( $data );
+            } elseif ( $state = 'gateway_processing_failed' ) {
+                $order->update_status( 'pending' );
+
+                $redirect_message = $charge_details->redirect_response->message;
+
+                $order->add_order_note( $redirect_message, false );
+
+                $data['new_order_status'] = 'failed';
+        
+                $magpie_backend->update_order_status( $data );
+
+                wp_redirect( wc_get_checkout_url() );
+            }
         } else {
             wc_get_logger()->add( 
                 'magpie-gateway', 
@@ -591,10 +551,14 @@ class WC_Magpie_Gateway extends WC_Payment_Gateway {
             $redirect_message = $charge_details->redirect_response->message;
 
             $data['new_order_status'] = 'failed';
+
+            wc_reduce_stock_levels( $order_id );
     
             $magpie_backend->update_order_status( $data );
 
             $order->add_order_note( $redirect_message, false );
+
+            wp_redirect( wc_get_checkout_url() );
         }
     }
 }

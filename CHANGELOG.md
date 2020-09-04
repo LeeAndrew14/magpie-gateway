@@ -1,4 +1,9 @@
 Changelogs:
+v1.0.5 09-3-2020
+• Add new column order_key in magpie_order_status table
+• Add rewrite URL rule workaround for redirect URL
+• Increase the minimum amount threshold from 3000 to 5000
+
 v1.0.4 09-2-2020
 • Add 3d secure gateway, redirect and callback keys values pairs to magpie API
 • Add wp_get_logger for every API request for error tracking
