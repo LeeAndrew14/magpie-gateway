@@ -312,7 +312,7 @@ class WC_Magpie_Gateway extends WC_Payment_Gateway {
                 'redirect'  => $this->get_return_url( $order ),
             );
         } else {
-            wc_add_notice( 'Transaction failed! ' . $order_status['message'], 'error' );
+            wc_add_notice( 'Transaction failed!', 'error' );
 
             return;
         }
