@@ -279,8 +279,6 @@ class WC_Magpie_Gateway extends WC_Payment_Gateway {
             $this->create_magpie_customer( $token_payload, $customer_details );
         }
 
-        $this->check_order( $order_id, $order->get_order_key() );
-
         $total =  $order->get_total() * 100;
 
         if ( $total < 5000 ) {  
@@ -288,6 +286,8 @@ class WC_Magpie_Gateway extends WC_Payment_Gateway {
 
             return;
         }
+
+        $this->check_order( $order_id, $order->get_order_key() );
 
         $is_3d_secure = $this->charge_condition( $order_id, $total, $token_payload, $customer_name );
 
@@ -417,9 +417,17 @@ class WC_Magpie_Gateway extends WC_Payment_Gateway {
             <br>If the problem persist please contact us.';
 
         if ( isset( $card_token->error ) ) {
-            wc_get_logger()->add( 'magpie-gateway', 'Charge Token Error' . wc_print_r( $card_token, true ) );
+            $error_type = $card_token->error->type;
 
-            return wc_add_notice( $message, 'error' );
+            if ( $error_type === 'card_error' ) {
+                $message = $card_token->error->message;
+
+                return wc_add_notice( $message, 'error' );
+            } elseif ( $error_type === 'invalid_request_error' || $error_type === 'authentication_error' ) {
+                wc_get_logger()->add( 'magpie-gateway', 'Charge Token Error ' . wc_print_r( $card_token, true ) );
+
+                return wc_add_notice( $message, 'error' );
+            }
         }
 
         $magpie_backend->save_magpie_token( $order_id, $card_token );
@@ -443,9 +451,17 @@ class WC_Magpie_Gateway extends WC_Payment_Gateway {
             $charge_data = json_decode( $charge_response );
 
             if ( isset( $charge_data->error ) ) {
-                wc_get_logger()->add( 'magpie-gateway', 'Charge Response Error' . wc_print_r( $charge_data, true ) );
+                $error_type = $charge_data->error->type;
 
-                return wc_add_notice( $message, 'error' );
+                if ( $error_type === 'card_error' ) {
+                    $message = $charge_data->error->message;
+
+                    return wc_add_notice( $message, 'error' );
+                } elseif ( $error_type === 'invalid_request_error' || $error_type === 'authentication_error' ) {
+                    wc_get_logger()->add( 'magpie-gateway', 'Charge Response Error' . wc_print_r( $charge_data, true ) );
+
+                    return wc_add_notice( $message, 'error' );
+                }
             }
 
             $magpie_backend->save_magpie_charge( $order_id, $charge_data );
@@ -522,12 +538,22 @@ class WC_Magpie_Gateway extends WC_Payment_Gateway {
 
                 wc_reduce_stock_levels( $order_id );
 
-                $order->add_order_note( 'Magpie minimum payment did not met.', false );
+                $order->add_order_note( 'Magpie payment state is pending .', false );
 
                 $data['new_order_status'] = 'failed';
         
                 $magpie_backend->update_order_status( $data );
             } elseif ( $state = 'gateway_processing_failed' ) {
+                $message = $charge_details->redirect_response->message;
+
+                if ( $message === 'Your card has insufficient funds.') {
+                    wp_redirect( wc_get_checkout_url() );
+
+                    wc_add_notice( $message, 'error' );
+
+                    return;
+                }
+
                 $order->update_status( 'pending' );
 
                 $redirect_message = $charge_details->redirect_response->message;
