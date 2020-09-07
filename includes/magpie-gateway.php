@@ -487,9 +487,9 @@ class WC_Magpie_Gateway extends WC_Payment_Gateway {
 
         $order = new WC_Order( $order_id );
 
-        $get_charge = $magpie_backend->get_magpie_charge( $order_id );
+        $get_charge = $magpie_backend->get_order_status( $order_id );
 
-        $charge_id = $get_charge['charge_id'];
+        $charge_id = $get_charge['message'];
 
         $response = $magpie->retrieve_charge( $charge_id, $this->private_key );
 
@@ -530,13 +530,15 @@ class WC_Magpie_Gateway extends WC_Payment_Gateway {
             $data['new_order_status'] = 'completed';
     
             $magpie_backend->update_order_status( $data );
+
+            return;
         } elseif ( isset( $charge_details->redirect_response->state ) ) {
             $state = $charge_details->redirect_response->state;
 
+            $message = $charge_details->redirect_response->message;
+
             if ( $state === 'pending' ) {
                 $order->update_status( 'pending' );
-
-                wc_reduce_stock_levels( $order_id );
 
                 $order->add_order_note( 'Magpie payment state is pending .', false );
 
@@ -551,9 +553,13 @@ class WC_Magpie_Gateway extends WC_Payment_Gateway {
 
                 return;
             } elseif ( $state === 'gateway_processing_failed' ) {
-                $message = $charge_details->redirect_response->message;
+                if ( $message === 'Your card has insufficient funds.' ) {
+                    wp_redirect( wc_get_checkout_url() );
 
-                if ( $message === 'Your card has insufficient funds.') {
+                    wc_add_notice( $message, 'error' );
+
+                    return;
+                } elseif ( $message === 'Your card was declined.' ) {
                     wp_redirect( wc_get_checkout_url() );
 
                     wc_add_notice( $message, 'error' );
@@ -563,17 +569,38 @@ class WC_Magpie_Gateway extends WC_Payment_Gateway {
 
                 $order->update_status( 'pending' );
 
-                $redirect_message = $charge_details->redirect_response->message;
-
-                $order->add_order_note( $redirect_message, false );
+                $order->add_order_note( $message, false );
 
                 $data['new_order_status'] = 'failed';
         
                 $magpie_backend->update_order_status( $data );
 
                 wp_redirect( wc_get_checkout_url() );
+
+                return;
+            } elseif ( $state === 'gateway_setup_failed' ) {
+                $order->update_status( 'pending' );
+
+                $order->add_order_note( $message, false );
+
+                $data['new_order_status'] = 'failed';
+        
+                $magpie_backend->update_order_status( $data );
+
+                wp_redirect( wc_get_checkout_url() );
+
+                wc_add_notice( 'Something went wrong while processing your order. Please try again.
+                    <br>If the problem persists please contact us.', 'error' );
+
+                return;
             }
         } else {
+            if ( ! $charge_details->captured && $charge_details->status === 'pending' ) {
+                $this->capture_charge( $charge_details );
+
+                return;
+            }
+
             wc_get_logger()->add( 
                 'magpie-gateway', 
                 'Payment Failed ' . $charge_details->source->name . ' ' . wc_print_r( $charge_details, true )
@@ -585,15 +612,18 @@ class WC_Magpie_Gateway extends WC_Payment_Gateway {
 
             $magpie_backend->update_order_status( $data );
 
-            if ( ! $charge_details->captured && $charge_details->status === 'pending' ) {
-                $this->capture_charge( $charge_details );
+            if ( isset( $charge_details->redirect_response->message ) ) {
+                $order->add_order_note( $charge_details->redirect_response->message, false );
+            } else {
+                $order->add_order_note( 'Payment failed', false );
             }
 
-            $redirect_message = $charge_details->redirect_response->message;
-
-            $order->add_order_note( $redirect_message, false );
-
             wp_redirect( wc_get_checkout_url() );
+            
+            wc_add_notice( 'Something went wrong while processing your order. Please try again.
+                    <br>If the problem persists please contact us.', 'error' );
+
+            return;
         }
     }
 
@@ -617,9 +647,11 @@ class WC_Magpie_Gateway extends WC_Payment_Gateway {
 
             return;
         }
+
+        $order_status = $magpie_backend->get_order_status_by_charge_id( $charge_details->id );
         
         if ( $charge_details->captured && $charge_details->status === 'succeeded' ) {
-            $this->check_payment_capture();
+            $this->check_payment_capture( $order_status['order_id'] );
         } else {
             wc_get_logger()->add( 
                 'magpie-gateway', 
@@ -632,9 +664,11 @@ class WC_Magpie_Gateway extends WC_Payment_Gateway {
 
             $magpie_backend->update_order_status( $data );
 
-            $redirect_message = $charge_details->redirect_response->message;
-
-            isset( $redirect_message ) ? $order->add_order_note( $redirect_message, false ) : $order->add_order_note( 'Payment failed', false );
+            if ( isset( $charge_details->redirect_response->message ) ) {
+                $order->add_order_note( $charge_details->redirect_response->message, false );
+            } else {
+                $order->add_order_note( 'Payment failed', false );
+            }
 
             wp_redirect( wc_get_checkout_url() );
 
