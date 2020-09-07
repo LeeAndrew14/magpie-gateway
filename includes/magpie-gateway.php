@@ -312,7 +312,7 @@ class WC_Magpie_Gateway extends WC_Payment_Gateway {
                 'redirect'  => $this->get_return_url( $order ),
             );
         } else {
-            wc_add_notice( 'Transaction failed!', 'error' );
+            wc_add_notice( 'Transaction failed.', 'error' );
 
             return;
         }
@@ -430,6 +430,14 @@ class WC_Magpie_Gateway extends WC_Payment_Gateway {
             }
         }
 
+        if ( $card_token->card->country !== 'PH' ) {
+            $message = 'Sorry, the country code of your card is not from the Philippine bank,
+                <br>we currently do not support international banks.
+                <br>Kindly try again or try using other payment methods.';
+
+            return wc_add_notice( $message, 'error' );
+        }
+
         $magpie_backend->save_magpie_token( $order_id, $card_token );
 
         $description = '[Tag]:' . $this->payment_description . '[Order ID]:' . $order_id . '[Customer Name]:' . $customer_name;
@@ -487,9 +495,9 @@ class WC_Magpie_Gateway extends WC_Payment_Gateway {
 
         $order = new WC_Order( $order_id );
 
-        $get_charge = $magpie_backend->get_magpie_charge( $order_id );
+        $get_charge = $magpie_backend->get_order_status( $order_id );
 
-        $charge_id = $get_charge['charge_id'];
+        $charge_id = $get_charge['message'];
 
         $response = $magpie->retrieve_charge( $charge_id, $this->private_key );
 
