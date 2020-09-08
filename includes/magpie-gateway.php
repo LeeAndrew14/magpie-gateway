@@ -1,8 +1,5 @@
 <?php
-/**
- * Magpie Credit Card Class
- */
-
+/** Magpie Credit Card Class */
 class WC_Magpie_Gateway extends WC_Payment_Gateway {
 
     /**
@@ -255,6 +252,7 @@ class WC_Magpie_Gateway extends WC_Payment_Gateway {
             ); 
         }
 
+        error_log('asdasdas');
         list( $exp_month, $_, $exp_year ) = explode( ' ', $_POST['magpie_cc-card-expiry'] );
 
         $customer_name = $customer_details['first_name'] . ' ' . $customer_details['last_name'];
@@ -313,6 +311,8 @@ class WC_Magpie_Gateway extends WC_Payment_Gateway {
             );
         } else {
             wc_add_notice( 'Transaction failed.', 'error' );
+
+            wp_delete_post( $order_id, true );
 
             return;
         }
@@ -430,12 +430,15 @@ class WC_Magpie_Gateway extends WC_Payment_Gateway {
             }
         }
 
-        if ( $card_token->card->country !== 'PH' ) {
-            $message = 'Sorry, the country code of your card is not from the Philippine bank,
-                <br>we currently do not support international banks.
-                <br>Kindly try again or try using other payment methods.';
+        // Do not allow international cards unless if in test mode
+        if ( ! $this->test_mode ) {
+            if ( $card_token->card->country !== 'PH' ) {
+                $message = 'Sorry, the country code of your card is not from the Philippines.
+                    <br>We currently do not support international cards.
+                    <br>Kindly try again or try using other payment methods.';
 
-            return wc_add_notice( $message, 'error' );
+                return wc_add_notice( $message, 'error' );
+            }
         }
 
         $magpie_backend->save_magpie_token( $order_id, $card_token );
@@ -448,10 +451,10 @@ class WC_Magpie_Gateway extends WC_Payment_Gateway {
                 'source'                => $card_token->id,
                 'description'           => $description,
                 'statement_descriptor'  => get_bloginfo( 'name' ),
-                'gateway'               => 'magpie_3ds',
+                'gateway'               => ! $this->test_mode ? 'magpie_3ds' : 'stripe',
                 'capture'               => true,
-                'redirect_url'          => get_site_url() . '/',
-                'callback_url'          => get_site_url() . '/3ds/callback',
+                'redirect_url'          => get_bloginfo( 'wpurl' ) . '/',
+                'callback_url'          => get_bloginfo( 'wpurl' ) . '/3ds/callback',
             );
 
             $charge_response = $magpie->create_charge( $charge_payload, $this->private_key );

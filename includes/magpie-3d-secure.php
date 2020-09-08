@@ -1,5 +1,5 @@
 <?php
-
+/** Magpie 3D Secure redirect */
 include( 'magpie-backend.php' );
 
 $magpie_backend = new WC_Magpie_Backend();
