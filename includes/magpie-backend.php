@@ -1,8 +1,5 @@
 <?php
-/** 
- * Custom Magpie Backend Class 
- */
-
+/** Custom Magpie Backend Class */
 class WC_Magpie_Backend {
     public function get_user_by_email( $email ) {
         $sql =  "SELECT * FROM {prefix}magpie_customer_data WHERE email = '$email'";
