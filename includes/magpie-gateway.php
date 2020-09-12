@@ -432,7 +432,7 @@ class WC_Magpie_Gateway extends WC_Payment_Gateway {
 
         // Do not allow international cards unless if in test mode
         if ( ! $this->test_mode ) {
-            if ( $card_token->card->country !== 'PH' ) {
+            if ( $card_token->card->country !== 'PH' && $card_token->card->country !== 'SG' ) {
                 $message = 'Sorry, the country code of your card is not from the Philippines.
                     <br>We currently do not support international cards.
                     <br>Kindly try again or try using other payment methods.';
