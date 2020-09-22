@@ -532,9 +532,6 @@ class WC_Magpie_Gateway extends WC_Payment_Gateway {
 
             $order->add_order_note( $message, false );
 
-            wc_add_notice( 'Something went wrong while processing your order. Please try again.
-                <br>If the problem persist please contact us.', 'error' );
-
             return;
         }
 
@@ -596,17 +593,11 @@ class WC_Magpie_Gateway extends WC_Payment_Gateway {
                 'Payment Failed ' . $charge_details->source->name . ' ' . wc_print_r( $charge_details, true )
             );
 
-            $order->update_status( 'pending' );
-
-            $redirect_message = $charge_details->redirect_response->message;
-
             $data['new_order_status'] = 'failed';
-
-            wc_reduce_stock_levels( $order_id );
     
             $magpie_backend->update_order_status( $data );
 
-            $order->add_order_note( $redirect_message, false );
+            wp_delete_post( $order_id, true );
 
             wp_redirect( wc_get_checkout_url() );
         }
