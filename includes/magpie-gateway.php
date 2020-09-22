@@ -260,7 +260,6 @@ class WC_Magpie_Gateway extends WC_Payment_Gateway {
             ); 
         }
 
-        error_log('asdasdas');
         list( $exp_month, $_, $exp_year ) = explode( ' ', $_POST['magpie_cc-card-expiry'] );
 
         $customer_name = $customer_details['first_name'] . ' ' . $customer_details['last_name'];
@@ -439,17 +438,17 @@ class WC_Magpie_Gateway extends WC_Payment_Gateway {
         }
 
         // Do not allow international cards unless if in test mode
-        if ( ! $this->test_mode ) {
-            $country_code = $card_token->card->country;
+        // if ( ! $this->test_mode ) {
+        //     $country_code = $card_token->card->country;
 
-            if ( $country_code !== 'PH' && $country_code !== 'SG' ) {
-                $message = 'Sorry, the country code of your card is not from the Philippines.
-                    <br>We currently do not support international cards.
-                    <br>Kindly try again or try using other payment methods.';
+        //     if ( $country_code !== 'PH' || $country_code !== 'SG' ) {
+        //         $message = 'Sorry, the country code of your card is not from the Philippines.
+        //             <br>We currently do not support international cards.
+        //             <br>Kindly try again or try using other payment methods.';
 
-                return wc_add_notice( $message, 'error' );
-            }
-        }
+        //         return wc_add_notice( $message, 'error' );
+        //     }
+        // }
 
         $magpie_backend->save_magpie_token( $order_id, $card_token );
 
