@@ -30,6 +30,7 @@ class WC_Magpie_Gateway extends WC_Payment_Gateway {
         $this->payment_description  = $this->get_option( 'payment_description' );
         $this->enabled              = $this->get_option( 'enabled' );
         $this->test_mode            = 'yes' === $this->get_option( 'test_mode' );
+        $this->three_d_secure       = 'yes' === $this->get_option( 'three_d_secure' );
         $this->private_key          = $this->test_mode ? $this->get_option( 'test_private_key' ) : $this->get_option( 'private_key' );
         $this->publishable_key      = $this->test_mode ? $this->get_option( 'test_publishable_key' ) : $this->get_option( 'publishable_key' );
 
@@ -95,6 +96,13 @@ class WC_Magpie_Gateway extends WC_Payment_Gateway {
                 'description' => 'Place the payment gateway in test mode using test API keys.',
                 'default'     => 'yes',
                 'desc_tip'    => true,
+            ),
+            'three_d_secure' => array(
+                'title'       => '3D Secure',
+                'label'       => 'Enable Magpie 3D Secure Gateway',
+                'type'        => 'checkbox',
+                'description' => '',
+                'default'     => 'no'
             ),
             'test_publishable_key' => array(
                 'title'       => 'Test Publishable Key',
@@ -432,7 +440,9 @@ class WC_Magpie_Gateway extends WC_Payment_Gateway {
 
         // Do not allow international cards unless if in test mode
         if ( ! $this->test_mode ) {
-            if ( $card_token->card->country !== 'PH' && $card_token->card->country !== 'SG' ) {
+            $country_code = $card_token->card->country;
+
+            if ( $country_code !== 'PH' && $country_code !== 'SG' ) {
                 $message = 'Sorry, the country code of your card is not from the Philippines.
                     <br>We currently do not support international cards.
                     <br>Kindly try again or try using other payment methods.';
@@ -451,11 +461,14 @@ class WC_Magpie_Gateway extends WC_Payment_Gateway {
                 'source'                => $card_token->id,
                 'description'           => $description,
                 'statement_descriptor'  => get_bloginfo( 'name' ),
-                'gateway'               => ! $this->test_mode ? 'magpie_3ds' : 'stripe',
                 'capture'               => true,
                 'redirect_url'          => get_bloginfo( 'wpurl' ) . '/',
                 'callback_url'          => get_bloginfo( 'wpurl' ) . '/3ds/callback',
             );
+
+            if ( ! $this->test_mode && $this->three_d_secure ) {
+                $charge_payload['gateway'] = 'magpie_3ds';
+            }
 
             $charge_response = $magpie->create_charge( $charge_payload, $this->private_key );
 
